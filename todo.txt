@@ -1,0 +1,3 @@
+# For build to find pyproj data
+pyproj_datadir = os.sep.join([os.path.abspath(os.path.dirname(__file__)+"/../../"), 'data'])
+and copy data to build/exexxxx/ directory

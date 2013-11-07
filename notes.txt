@@ -1,0 +1,6 @@
+For build to find pyproj data:
+	Rename C:\Python33\Lib\site-packages\pyproj\data to projdata (to avoid confusion)
+	Move it two levels down (C:\Python33\Lib\)
+	In C:\Python33\Lib\site-packages\pyproj\__init__.py(after the imports):
+		pyproj_datadir = os.sep.join([os.path.abspath(os.path.dirname(__file__)+"/../../"), 'projdata'])
+	after build, copy projdata/ to build/exexxxx/ directory

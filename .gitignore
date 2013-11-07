@@ -1,0 +1,9 @@
+*.pyc
+*.png
+*.tiff
+*.tfw
+*.jpg
+projdata
+build
+__pycache__
+test_scripts
