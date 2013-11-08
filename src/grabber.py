@@ -49,7 +49,7 @@ def grab_img(box, w, h):
 #     }
 #     r = requests.get('http://gis.ktimanet.gr/wms/wmsopen/wmsserver.aspx', params=payload)
 
-#     i = Image.open(StringIO(r.content))    
+#     i = Image.open(StringIO(r.content))
 
 #     print 'after request reached'
 #     i.save('egsa.tiff')

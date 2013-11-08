@@ -1,10 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtGui, QtCore, QtWidgets
-from PyQt5.QtCore import pyqtSignal
-from entities import Point, Box
+from entities import Point
 
-START_CLL = Point(0, 3800000, 2100)
+START_CLL = Point(0.0, 3800000.0, 0.0)
 START_WIDTH = 920000.0
 START_HEIGHT = 820000.0
 
@@ -26,11 +25,11 @@ class GridCanvas(QtWidgets.QGraphicsScene):
         w, h - Canvas width, height in meters
         wfac, hfac - horizontal, vertical ratio of meters/pixels
     """
-    grid_done = pyqtSignal(dict)
-    mouse_move = pyqtSignal(str)
+    grid_done = QtCore.pyqtSignal(dict)
+    mouse_move = QtCore.pyqtSignal(str)
     def __init__(self, *args):
         super(GridCanvas, self).__init__(*args)
-        self.llx, self.lly = START_CLL.egsa()
+        self.llx, self.lly = START_CLL.x, START_CLL.y
         self.selecting = False
         self.panning = False
 
@@ -48,14 +47,14 @@ class GridCanvas(QtWidgets.QGraphicsScene):
         self.hfac = self.w / self.vw
 
     def trans_canvas_egsa(self, cx, cy):
-        x = self.llx + cx * self.wfac
-        y = self.lly + (self.vh - cy) * self.hfac
-        return x, y
+        ex = self.llx + cx * self.wfac
+        ey = self.lly + (self.vh - cy) * self.hfac
+        return ex, ey
 
     def trans_egsa_canvas(self, ex, ey):
-        x = (ex - self.llx) / self.wfac
-        y = (self.h + self.lly - ey) / self.hfac
-        return x, y
+        cx = (ex - self.llx) / self.wfac
+        cy = (self.h + self.lly - ey) / self.hfac
+        return cx, cy
 
     def calculate_scene_egsa(self):
         view_aspect = float(self.vw) / self.vh
@@ -88,7 +87,7 @@ class GridCanvas(QtWidgets.QGraphicsScene):
         else:
             small = self.w
             large = self.h
-        num_dig = len(str(int(small)))    
+        num_dig = len(str(int(small)))
         div = float(10 ** (num_dig - 1))
         while True:
             num_divisions = small / div
@@ -114,7 +113,7 @@ class GridCanvas(QtWidgets.QGraphicsScene):
             txt.setPos(can_vert, self.vh - 2)
             txt.setRotation(270)
             vert += div
-        while horiz <= self.lly + self.h:            
+        while horiz <= self.lly + self.h:
             x, can_horiz = self.trans_egsa_canvas(0, horiz)
             self.addLine(QtCore.QLineF(QtCore.QPointF(0, can_horiz), QtCore.QPointF(self.vw, can_horiz)), GRID_PEN)
             if int(horiz) == horiz:
@@ -136,6 +135,8 @@ class GridCanvas(QtWidgets.QGraphicsScene):
         my = pos.y()
         oldcx = self.vw / 2.0
         oldcy = self.vh / 2.0
+        # dx, dy = (oldcx - mx) * (1 - zf), (oldcy - my) * (1 - zf)
+        # A bit better at keeping the mouse coords steady
         dx, dy = (oldcx - mx) * (1 - zf) * abs(2 - zf), (oldcy - my) * (1 - zf) * abs(2 - zf)
         newcx = oldcx + dx
         newcy = oldcy + dy
@@ -206,7 +207,6 @@ class GridCanvas(QtWidgets.QGraphicsScene):
         direction = event.delta() / 120
         if direction > 0:
             # zoom in
-            print('zoom in')
             self.zoom(event.scenePos(), ZOOM_FACTOR)
         else:
             # zoom out

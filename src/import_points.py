@@ -13,11 +13,14 @@ LINETYPE = {0: {'display': 'Όνομα,Χ(φ),Υ(λ),Ζ',
             3: {'display': 'Χ(φ),Υ(λ)',
                 'form': 'x,y'}}
 
-class ImportPointsDialog(QDialog):    
+COORD_CODE = {"ΕΓΣΑ'87": 2100, "WGS84": 4326}
+
+class ImportPointsDialog(QDialog):
+    importing_points = QtCore.pyqtSignal(list)
     def __init__(self, *args):
-        super(ImportPointsDialog, self).__init__(*args)     
+        super(ImportPointsDialog, self).__init__(*args)
         self.initUI()
-        
+
     def initUI(self):
         self.setWindowTitle('Εισαγωγή σημείων')
         self.setGeometry(10, 30, 400, 700)
@@ -38,7 +41,7 @@ class ImportPointsDialog(QDialog):
             'Όνομα,Χ(φ),Υ(λ)',
             'Χ(φ),Υ(λ),Ζ',
             'Χ(φ),Υ(λ)',
-            'Άλλη(γράψτε εδώ)'])        
+            'Άλλη(γράψτε εδώ)'])
         self.from_linetype_combo.setEditable(True)
         self.from_linetype_combo.editTextChanged.connect(self.keep_from_linetype_combo)
 
@@ -49,13 +52,13 @@ class ImportPointsDialog(QDialog):
 
         self.text_input = QTextEdit(self)
         self.text_input.setLineWrapMode(QTextEdit.NoWrap)
-        grid.addWidget(self.text_input, 3, 0, 5, 6)
+        grid.addWidget(self.text_input, 3, 0, 4, 6)
 
         convert_btn = QPushButton('Μετατροπή', self)
         convert_btn.clicked.connect(self.convert)
         grid.addWidget(convert_btn, 7, 1, 1, 2)
 
-        import_btn = QPushButton('Εισαγωγή στο σχέδιο', self)
+        import_btn = QPushButton("Εισαγωγή στο σχέδιο ως ΕΓΣΑ'87", self)
         import_btn.clicked.connect(self.import_to_canvas)
         grid.addWidget(import_btn, 7, 3, 1, 2)
 
@@ -68,13 +71,18 @@ class ImportPointsDialog(QDialog):
 
         self.text_output = QTextEdit(self)
         self.text_output.setLineWrapMode(QTextEdit.NoWrap)
-        grid.addWidget(self.text_output, 9, 0, 5, 6)
+        grid.addWidget(self.text_output, 9, 0, 4, 6)
 
     def load_file(self):
         file_chooser = QFileDialog.getOpenFileName(self, 'Επιλογή αρχείου', '', "Όλα τα αρχεία (*.*)")
         filename = file_chooser[0]
-        with open(filename,'r') as f:
-            point_lines = f.readlines()
+        try:
+            with open(filename,'r') as f:
+                point_lines = f.readlines()
+        except FileNotFoundError:
+            self.error('Πρόβλημα', 'Το αρχείο δεν βρέθηκε...')
+        self.text_input.setText('')
+        self.text_output.setText('')
         for line in point_lines:
             self.text_input.append(line.rstrip())
 
@@ -100,34 +108,68 @@ class ImportPointsDialog(QDialog):
                 break
         if not hasattr(self, 'div'):
             self.error('Πρόβλημα', 'Δεν βρέθηκε κάποιο κατάλληλο διαχωριστικό σε κάθε γραμμή...')
+            return False
         linetype = LINETYPE[self.from_linetype_combo.currentIndex()]['form'].split(',')
-        print(linetype)
         points = []
         for line in lines:
-            items = line.split(self.div)
+            items = [item.strip() for item in line.split(self.div)]
+            if len(items) != len(linetype):
+                self.error('Πρόβλημα', 'Λάθος μορφή, επιλέξτε την σωστή και προσπαθήστε ξανά...')
+                return False
             point = dict()
             for idx, t in enumerate(linetype):
                 item = items[idx]
                 if t in ['x', 'y', 'z']:
-                    try:                        
+                    try:
                         point[t] = float(item.replace(',', '.'))
                     except:
                         self.error('Πρόβλημα', 'Κάποιο από τα x, y, z δεν είναι αριθμός')
                 else:
                     point[t] = item
             points.append(point)
-        print points
-        # if self.from_combo.currentIndex() == 0:
-        #     for p in points:
-        #         if 'z' not in p:
-        #             z = 0
-        #         else:
-        #             z = p['z']
-        #         p['point'] = Point(p['x'], p['y'], z, 2100)
-
+        source_system = COORD_CODE[self.from_combo.currentText()]
+        for p in points:
+            if 'z' not in p:
+                z = 0
+            else:
+                z = p['z']
+            p['point'] = Point(p['x'], p['y'], z, source_system)
+        return points
 
     def convert(self):
-        self.read_points()
+        points = self.read_points()
+        if not points:
+            return
+        self.text_output.setText('')
+        source_system = COORD_CODE[self.from_combo.currentText()]
+        target_system = COORD_CODE[self.to_combo.currentText()]
+        if source_system == target_system:
+            self.text_output.setText(self.text_input.toPlainText())
+            return
+        if target_system == 2100:
+            for p in points:
+                line = ''
+                if 'name' in p:
+                    line += p['name'] + self.div
+                line += str(p['point'].x) + self.div
+                line += str(p['point'].y)
+                if 'z' in p:
+                    line += self.div + str(p['point'].z)
+                self.text_output.append(line)
+        elif target_system == 4326:
+            for p in points:
+                line = ''
+                if 'name' in p:
+                    line += p['name'] + self.div
+                wgs_x, wgs_y, wgs_z = p['point'].wgs()
+                line += str(wgs_x) + self.div
+                line += str(wgs_y)
+                if 'z' in p:
+                    line += self.div + str(wgs_z)
+                self.text_output.append(line)
 
     def import_to_canvas(self):
-        pass
+        points = self.read_points()
+        self.importing_points.emit(points)
+        self.close()
+

@@ -3,21 +3,23 @@
 import sys
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import *
-from map_canvas import MapCanvas
 from grid_canvas import GridCanvas
+from object_canvas import ObjectCanvas
+from map_canvas import MapCanvas
 from import_points import ImportPointsDialog
 
 WMS_ENABLED = False
-# WMS_ENABLED = True
+WMS_ENABLED = True
 
 
-class Map(QWidget):    
+class Map(QWidget):
     def __init__(self):
-        super(Map, self).__init__()     
+        super(Map, self).__init__()
         self.initial = True
         self.frozen_map = False
+        self.points = []
         self.initUI()
-        
+
     def initUI(self):
         self.setWindowTitle('GrMap')
         self.setGeometry(10, 30, 800, 700)
@@ -40,7 +42,7 @@ class Map(QWidget):
         correct_map_btn.clicked.connect(self.correct_map)
 
         import_points_btn = QPushButton('Εισαγωγή σημείων', self)
-        import_points_btn.clicked.connect(self.import_points)
+        import_points_btn.clicked.connect(self.show_import_points_dialog)
 
         self.grid.addWidget(pan_btn, 0, 0, 1, 1)
         self.grid.addWidget(zoom_btn, 0, 1, 1, 1)
@@ -53,11 +55,16 @@ class Map(QWidget):
         self.mapview.setStyleSheet("border: 0px; background: black")
         self.grid.addWidget(self.mapview, 1, 0, 10, 10)
 
+        self.ocanvas = ObjectCanvas(self)
+        self.oview = QGraphicsView(self.ocanvas, self)
+        self.oview.setStyleSheet("border: 0px; background: transparent")
+        self.grid.addWidget(self.oview, 1, 0, 10, 10)
+
         self.gcanvas = GridCanvas(self)
         self.view = QGraphicsView(self.gcanvas, self)
         self.view.setStyleSheet("border: 0px; background: transparent")
         self.view.setMouseTracking(True)
-        self.view.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))        
+        self.view.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
         self.grid.addWidget(self.view, 1, 0, 10, 10)
 
         # Footer ************************************
@@ -67,7 +74,7 @@ class Map(QWidget):
         self.spinlbl = QLabel(self)
         self.spinlbl.setMovie(self.spinner)
         self.spinlbl.hide()
-        
+
         self.lbl = QLabel(self)
         self.lbl.setText('0.000, 0.000')
 
@@ -79,12 +86,13 @@ class Map(QWidget):
         self.grid.addWidget(tiffbutton, 11, 6, 1, 4)
 
         self.gcanvas.mouse_move.connect(self.refresh_coords)
+        self.gcanvas.grid_done.connect(self.ocanvas.update_view)
         if WMS_ENABLED:
             self.map_canvas = MapCanvas(self)
             self.mapview.setScene(self.map_canvas)
             self.map_canvas.img_loading.connect(self.busy)
             self.map_canvas.img_loaded.connect(self.ready)
-            self.gcanvas.grid_done.connect(self.map_canvas.update_view)        
+            self.gcanvas.grid_done.connect(self.map_canvas.update_view)
         self.show()
 
     def freeze_map(self, pressed):
@@ -97,15 +105,16 @@ class Map(QWidget):
     def correct_map(self):
         pass
 
-    def import_points(self):
+    def show_import_points_dialog(self):
         self.import_points_dialog = ImportPointsDialog(self)
         self.import_points_dialog.show()
-
+        self.import_points_dialog.importing_points.connect(self.ocanvas.import_points)
 
     def resizeEvent(self, event):
         self.gcanvas.clear()
         vw, vh = self.view.size().width(), self.view.size().height()
         self.view.setSceneRect(QtCore.QRectF(0, 0, vw, vh))
+        self.oview.setSceneRect(QtCore.QRectF(0, 0, vw, vh))
         self.mapview.setSceneRect(QtCore.QRectF(0, 0, vw, vh))
         if self.initial:
             self.gcanvas.calc_initial(vw, vh)
@@ -127,7 +136,7 @@ class Map(QWidget):
         if event.key() == QtCore.Qt.Key_C:
             # Copy point coords to clipboard
             coords = self.lbl.text()
-            clipboard = QtGui.QApplication.clipboard()
+            clipboard = QApplication.clipboard()
             clipboard.setText(coords)
             print('Coordinates copied to clipboard: ', coords)
 

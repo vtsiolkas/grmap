@@ -5,18 +5,16 @@ import math
 
 
 class Point(object):
-    def __init__(self, x, y, source=4326):
-        if source == 2100:
-            self.x, self.y = trans_to_wgs(x, y)
+    def __init__(self, x, y, z,source=2100):
+        if source == 4326:
+            self.x, self.y, self.z = trans_to_egsa(x, y, z)
         else:
             self.x = x
             self.y = y
+            self.z = z
 
     def wgs(self):
-        return self.x, self.y
-
-    def egsa(self):
-        return trans_to_egsa(self.x, self.y)
+        return trans_to_wgs(self.x, self.y, self.z)
 
     def __str__(self):
         return ','.join([str(c) for c in list(self.egsa())])
@@ -25,60 +23,28 @@ class Point(object):
 class Box(object):
     def __init__(self, ll, ur):
         self.ll = ll
-        self.lr = Point(ur.x, ll.y)
-        self.ul = Point(ll.x, ur.y)
+        self.ul = Point(ll.x, ur.y, ll.z)
         self.ur = ur
-        self.width = self.square_width()
-        self.height = self.square_height()
+        self.lr = Point(ur.x, ll.y, ll.z)
+        self.w = self.lr.x - self.ll.x
+        self.h = self.ul.y - self.ll.y
 
-    def wgs(self):
+    def __str__(self):
         return ','.join(str(c) for c in (self.ll.x, self.ll.y, self.ur.x, self.ur.y))
 
-    def egsa(self):
-        return (trans_to_egsa(self.ll.x, self.ll.y),
-                trans_to_egsa(self.ul.x, self.ul.y),
-                trans_to_egsa(self.ur.x, self.ur.y),
-                trans_to_egsa(self.lr.x, self.lr.y))
+    def wgs(self):
+        llx, lly, llz = self.ll.wgs()
+        urx, ury, urz = self.ur.wgs()
+        return '%s,%s,%s,%s' % (llx, lly, urx, ury)
 
-    def square_width(self):
-        llx, lly = trans_to_egsa(self.ll.x, self.ll.y)
-        urx, ury = trans_to_egsa(self.ur.x, self.ur.y)
-        return urx - llx
+    def ul_egsa_through_wgs(self):
+        llx, lly, llz = self.ll.wgs()
+        urx, ury, urz = self.ur.wgs()
+        ulx, uly, ulz = llx, ury, llz
+        return Point(ulx, uly, ulz, 4326)
 
-    def square_height(self):
-        llx, lly = trans_to_egsa(self.ll.x, self.ll.y)
-        urx, ury = trans_to_egsa(self.ur.x, self.ur.y)
-        return ury - lly
-
-    def egsa_width(self):
-        llx, lly = trans_to_egsa(self.ll.x, self.ll.y)
-        lrx, lry = trans_to_egsa(self.lr.x, self.lr.y)
-        return lrx - llx
-
-    def egsa_height(self):
-        llx, lly = trans_to_egsa(self.ll.x, self.ll.y)
-        ulx, uly = trans_to_egsa(self.ul.x, self.ul.y)
-        return uly - lly
-
-    def egsa_rotation(self):
-        """DEPRECATED - Using pixmap transformations now
-        Calculates mean rotation angle for left and right side of box
-        """
-        llx, lly = self.ll.egsa()
-        ulx, uly = self.ul.egsa()
-        dx = ulx - llx
-        dy = uly - lly
-        lrads = math.atan2(dy, -dx)
-        lrads -= math.pi/2
-        langle = math.degrees(lrads)
-
-        lrx, lry = self.lr.egsa()
-        urx, ury = self.ur.egsa()
-        dx = urx - lrx
-        dy = ury - lry
-        rrads = math.atan2(dy, -dx)
-        rrads -= math.pi/2
-        rangle = math.degrees(rrads)
-
-        angle = (langle + rangle) / 2
-        return angle
+    def lr_egsa_through_wgs(self):
+        llx, lly, llz = self.ll.wgs()
+        urx, ury, urz = self.ur.wgs()
+        lrx, lry, lrz = urx, lly, llz
+        return Point(lrx, lry, lrz, 4326)
