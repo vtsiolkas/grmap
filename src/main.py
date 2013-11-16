@@ -59,9 +59,6 @@ class Map(QWidget):
         self.grid.addWidget(correct_map_btn, 0, 4, 1, 1)
         self.grid.addWidget(import_points_btn, 0, 5, 1, 1)
 
-        # Drawing Toolbar ************************************
-
-
         # Views ************************************
         self.mapview = QGraphicsView(self)
         self.mapview.setStyleSheet("border: 0px; background: black")
@@ -109,9 +106,9 @@ class Map(QWidget):
         self.grid.addWidget(self.lbl, 11, 2, 1, 4)
         self.grid.addWidget(tiffbutton, 11, 6, 1, 4)
 
-        read_hatt_btn = QPushButton('hatt grid', self)
-        read_hatt_btn.clicked.connect(self.ocanvas.read_hatt)
-        self.grid.addWidget(read_hatt_btn, 0, 6, 1, 1)
+        hatt_grid_btn = QPushButton('Διανομή Κ.Φ.Χ 1:50000', self)
+        hatt_grid_btn.clicked.connect(self.ocanvas.hatt_grid)
+        self.grid.addWidget(hatt_grid_btn, 0, 6, 1, 1)
 
         self.show()
 

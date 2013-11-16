@@ -18,7 +18,7 @@ def grab_img(box, w, h):
         'REQUEST': 'GetMap',
         'LAYERS': 'KTBASEMAP',
         'SRS': 'EPSG:4326',
-        'BBOX': box.wgs(),
+        'BBOX': box.to_wgs(),
         'WIDTH': w,
         'HEIGHT': h,
         'FORMAT': 'image/jpg'
@@ -42,7 +42,7 @@ def grab_img(box, w, h):
 #         'REQUEST': 'GetMap',
 #         'LAYERS': 'KTBASEMAP',
 #         'SRS': 'EPSG:4326',
-#         'BBOX': box.wgs(),
+#         'BBOX': box.to_wgs(),
 #         'WIDTH': width,
 #         'HEIGHT': height,
 #         'FORMAT': 'image/png'

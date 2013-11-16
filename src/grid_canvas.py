@@ -3,9 +3,6 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
 from entities import Point
 
-from conversions.hatt import read_coefficients, find_regions
-
-
 START_CLL = Point(0.0, 3800000.0, 0.0)
 START_WIDTH = 920000.0
 START_HEIGHT = 820000.0

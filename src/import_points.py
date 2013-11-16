@@ -3,7 +3,7 @@
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import *
 from entities import Point
-from conversions.hatt import read_coefficients, find_regions
+from conversions.hatt import REGIONS
 
 
 LINETYPE = {0: {'display': 'Όνομα,Χ(φ),Υ(λ),Ζ',
@@ -184,7 +184,7 @@ class ImportPointsDialog(QDialog):
                 line = ''
                 if 'name' in p:
                     line += p['name'] + self.div
-                wgs_x, wgs_y, wgs_z = p['point'].wgs()
+                wgs_x, wgs_y, wgs_z = p['point'].to_wgs()
                 line += str(wgs_x) + self.div
                 line += str(wgs_y)
                 if 'z' in p:
@@ -211,7 +211,7 @@ class HattDialog(QDialog):
         grid = QGridLayout(self)
 
         explain_label = QLabel(
-            'Εισάγετε το φ και λ του κέντρου φύλλου χάρτη 1:50000 και πιέστε Φιλτράρισμα για να \n' +
+            'Εισάγετε το φ και λ του κέντρου φύλλου χάρτη και πιέστε Αναζήτηση για να \n' +
             'περιοριστούν οι περιοχές στη λίστα, και επιλέξτε την περιοχή που θέλετε. \n' +
             'Εναλλακτικά επιλέξτε κατευθείαν την περιοχή που θέλετε από τη λίστα.'
             )
@@ -221,7 +221,7 @@ class HattDialog(QDialog):
         self.f_edit = QLineEdit()
         self.l_edit = QLineEdit()
 
-        search_btn = QPushButton('Φιλτράρισμα')
+        search_btn = QPushButton('Αναζήτηση')
         search_btn.clicked.connect(self.limit_regions)
         search_btn.setAutoDefault(False)
 
@@ -229,7 +229,7 @@ class HattDialog(QDialog):
         line1.setFrameShape(QFrame.HLine)
         line1.setFrameShadow(QFrame.Sunken)
 
-        self.regions = read_coefficients()
+        self.regions = REGIONS
         from_combo_label = QLabel('Φύλλο χάρτη 1:50000:')
         self.region_combo = QComboBox(self)
         self.region_combo.setMinimumContentsLength(30)
@@ -270,8 +270,25 @@ class HattDialog(QDialog):
     def limit_regions(self):
         f = self.f_edit.text().replace(',', '.')
         l = self.l_edit.text().replace(',', '.')
-        regions = find_regions(f, l)
-        if regions:
+        result = []
+        # Sanitizing input (heh)
+        f_clean = f.strip().replace(',', '.')
+        l_clean = l.strip().replace(',', '.')
+        f_split = f_clean.split('.')
+        l_split = l_clean.split('.')
+        if len(f_split) != 2 or len(l_split) != 2:
+            self.error('Πρόβλημα', "Δεν αναγνωρίζονται οι παράμετροι φ και λ. Εισάγετέ τους στη μορφή (φ = 39.45 και λ = -1.45) π.χ για το Φ.Χ 30' Τρικάλων που έχει 39°45', -1°45')" +
+                                   " ή (φ = 39.09 και λ = 0.27) για (μικρό) Φ.Χ. 6' που έχει 39°09', 0°27'" )
+            return
+        # First we look if f & l are .15 or .45 (big hatt)
+        if f_split[2] in ['15', '45'] and l_split[2] in ['15', '45']:
+            for region in self.regions:
+                if region.f == f and region.l == l:
+                    result.append(region)
+        # If none found, we suppose it is a small(6') map f & l
+        elif f_split[2] in ['3', '9', '03', '09', '15', '21', '27', '33', '39', '45', '51', '57'] and l_split[2] in ['3', '9', '03', '09', '15', '21', '27', '33', '39', '45', '51', '57']:
+            result = small_hatt_container(f_clean, l_clean)
+        if result:
             self.region_combo.clear()
             self.regions = regions
             region_names = ['%s - (%s, %s)' % (r.name, r.f, r.l) for r in self.regions]
