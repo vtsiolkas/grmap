@@ -3,6 +3,8 @@
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import *
 from entities import Point
+from conversions.hatt import read_coefficients, find_regions
+
 
 LINETYPE = {0: {'display': 'Όνομα,Χ(φ),Υ(λ),Ζ',
                 'form': 'name,x,y,z'},
@@ -13,12 +15,12 @@ LINETYPE = {0: {'display': 'Όνομα,Χ(φ),Υ(λ),Ζ',
             3: {'display': 'Χ(φ),Υ(λ)',
                 'form': 'x,y'}}
 
-COORD_CODE = {"ΕΓΣΑ'87": 2100, "WGS84": 4326}
 
 class ImportPointsDialog(QDialog):
     importing_points = QtCore.pyqtSignal(list)
     def __init__(self, *args):
         super(ImportPointsDialog, self).__init__(*args)
+        self.region = None
         self.initUI()
 
     def initUI(self):
@@ -33,7 +35,8 @@ class ImportPointsDialog(QDialog):
 
         from_combo_label = QLabel('Σύστημα αναφοράς σημείων:')
         self.from_combo = QComboBox(self)
-        self.from_combo.addItems(["ΕΓΣΑ'87", "WGS84"])
+        self.from_combo.addItems(["ΕΓΣΑ87", "WGS84", "HATT"])
+        self.from_combo.currentIndexChanged[str].connect(self.from_changed)
         from_linetype_label = QLabel('Μορφή:')
         self.from_linetype_combo = QComboBox(self)
         self.from_linetype_combo.addItems([
@@ -45,8 +48,13 @@ class ImportPointsDialog(QDialog):
         self.from_linetype_combo.setEditable(True)
         self.from_linetype_combo.editTextChanged.connect(self.keep_from_linetype_combo)
 
+        self.from_hatt_label = QLabel('')
+
         grid.addWidget(from_combo_label, 1, 0, 1, 2)
         grid.addWidget(self.from_combo, 1, 2, 1, 2)
+
+        grid.addWidget(self.from_hatt_label, 1, 4, 1, 2)
+
         grid.addWidget(from_linetype_label, 2, 0, 1, 2)
         grid.addWidget(self.from_linetype_combo, 2, 2, 1, 4)
 
@@ -58,13 +66,13 @@ class ImportPointsDialog(QDialog):
         convert_btn.clicked.connect(self.convert)
         grid.addWidget(convert_btn, 7, 1, 1, 2)
 
-        import_btn = QPushButton("Εισαγωγή στο σχέδιο ως ΕΓΣΑ'87", self)
+        import_btn = QPushButton("Εισαγωγή στο σχέδιο ως ΕΓΣΑ87", self)
         import_btn.clicked.connect(self.import_to_canvas)
         grid.addWidget(import_btn, 7, 3, 1, 2)
 
         to_combo_label = QLabel('Σύστημα αναφοράς σημείων:')
         self.to_combo = QComboBox(self)
-        self.to_combo.addItems(["ΕΓΣΑ'87", "WGS84"])
+        self.to_combo.addItems(["ΕΓΣΑ87", "WGS84"])
 
         grid.addWidget(to_combo_label, 8, 0, 1, 2)
         grid.addWidget(self.to_combo, 8, 2, 1, 2)
@@ -86,6 +94,21 @@ class ImportPointsDialog(QDialog):
         for line in point_lines:
             self.text_input.append(line.rstrip())
 
+    def from_changed(self, system):
+        if system == 'HATT':
+            hatt_dialog = HattDialog(self)
+            hatt_dialog.hatt_dialog_closed.connect(self.get_hatt_region)
+            hatt_dialog.exec_()
+        else:
+            self.from_hatt_label.setText('')
+
+    def get_hatt_region(self, region):
+        self.region = region
+        if not self.region:
+            self.from_combo.setCurrentIndex(0)
+        else:
+            self.from_hatt_label.setText('%s - (%s, %s)' % (region.name, region.f, region.l))
+
     def keep_from_linetype_combo(self, text):
         idx = self.from_linetype_combo.currentIndex()
         if idx in LINETYPE:
@@ -98,7 +121,7 @@ class ImportPointsDialog(QDialog):
         msg.open()
 
     def read_points(self):
-        possible_divs = [':', ';', '-', ',', ' ']
+        possible_divs = [':', ';', ',', ' ']
         text = self.text_input.toPlainText()
         if text.strip() == '': return
         lines = [line.strip() for line in text.splitlines()]
@@ -127,13 +150,13 @@ class ImportPointsDialog(QDialog):
                 else:
                     point[t] = item
             points.append(point)
-        source_system = COORD_CODE[self.from_combo.currentText()]
+        source_system = self.from_combo.currentText()
         for p in points:
             if 'z' not in p:
                 z = 0
             else:
                 z = p['z']
-            p['point'] = Point(p['x'], p['y'], z, source_system)
+            p['point'] = Point(p['x'], p['y'], z, source_system, self.region)
         return points
 
     def convert(self):
@@ -141,12 +164,12 @@ class ImportPointsDialog(QDialog):
         if not points:
             return
         self.text_output.setText('')
-        source_system = COORD_CODE[self.from_combo.currentText()]
-        target_system = COORD_CODE[self.to_combo.currentText()]
+        source_system = self.from_combo.currentText()
+        target_system = self.to_combo.currentText()
         if source_system == target_system:
             self.text_output.setText(self.text_input.toPlainText())
             return
-        if target_system == 2100:
+        if target_system == 'ΕΓΣΑ87':
             for p in points:
                 line = ''
                 if 'name' in p:
@@ -156,7 +179,7 @@ class ImportPointsDialog(QDialog):
                 if 'z' in p:
                     line += self.div + str(p['point'].z)
                 self.text_output.append(line)
-        elif target_system == 4326:
+        elif target_system == 'WGS84':
             for p in points:
                 line = ''
                 if 'name' in p:
@@ -170,6 +193,94 @@ class ImportPointsDialog(QDialog):
 
     def import_to_canvas(self):
         points = self.read_points()
-        self.importing_points.emit(points)
-        self.close()
+        if points:
+            self.importing_points.emit(points)
+            self.close()
 
+
+class HattDialog(QDialog):
+    hatt_dialog_closed = QtCore.pyqtSignal(object)
+    def __init__(self, *args):
+        super(HattDialog, self).__init__(*args)
+        self.region = None
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle('Επιλογή φύλλου χάρτη 1:50000')
+        self.setGeometry(10, 30, 400, 200)
+        grid = QGridLayout(self)
+
+        explain_label = QLabel(
+            'Εισάγετε το φ και λ του κέντρου φύλλου χάρτη 1:50000 και πιέστε Φιλτράρισμα για να \n' +
+            'περιοριστούν οι περιοχές στη λίστα, και επιλέξτε την περιοχή που θέλετε. \n' +
+            'Εναλλακτικά επιλέξτε κατευθείαν την περιοχή που θέλετε από τη λίστα.'
+            )
+
+        f_label = QLabel('φ:')
+        l_label = QLabel('λ:')
+        self.f_edit = QLineEdit()
+        self.l_edit = QLineEdit()
+
+        search_btn = QPushButton('Φιλτράρισμα')
+        search_btn.clicked.connect(self.limit_regions)
+        search_btn.setAutoDefault(False)
+
+        line1 = QFrame(self)
+        line1.setFrameShape(QFrame.HLine)
+        line1.setFrameShadow(QFrame.Sunken)
+
+        self.regions = read_coefficients()
+        from_combo_label = QLabel('Φύλλο χάρτη 1:50000:')
+        self.region_combo = QComboBox(self)
+        self.region_combo.setMinimumContentsLength(30)
+        self.region_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        region_names = ['%s - (%s, %s)' % (r.name, r.f, r.l) for r in self.regions]
+        self.region_combo.addItems(region_names)
+
+        grid.addWidget(explain_label, 0, 0, 1, 20)
+        grid.addWidget(f_label, 1, 0, 2, 1)
+        grid.addWidget(self.f_edit, 1, 1, 2, 4)
+        grid.addWidget(l_label, 1, 5, 2, 1)
+        grid.addWidget(self.l_edit, 1, 6, 2, 4)
+        grid.addWidget(search_btn, 1, 12, 2, 8)
+        grid.addWidget(line1, 3, 0, 1, 20)
+        grid.addWidget(from_combo_label, 4, 0, 4, 5)
+        grid.addWidget(self.region_combo, 4, 5, 4, 15)
+
+        self.ok_btn = QPushButton('OK')
+        self.ok_btn.clicked.connect(self.close_window)
+        self.ok_btn.setAutoDefault(True)
+        self.cancel_btn = QPushButton('Ακύρωση')
+        self.cancel_btn.clicked.connect(self.close_window)
+
+        grid.addWidget(self.ok_btn, 8, 0, 1, 10)
+        grid.addWidget(self.cancel_btn, 8, 10, 1, 10)
+
+    def closeEvent(self, event):
+        self.hatt_dialog_closed.emit(self.region)
+
+    def close_window(self):
+        if self.sender() == self.ok_btn:
+            self.region = self.regions[self.region_combo.currentIndex()]
+            self.close()
+        else:
+            self.region = None
+            self.close()
+
+    def limit_regions(self):
+        f = self.f_edit.text().replace(',', '.')
+        l = self.l_edit.text().replace(',', '.')
+        regions = find_regions(f, l)
+        if regions:
+            self.region_combo.clear()
+            self.regions = regions
+            region_names = ['%s - (%s, %s)' % (r.name, r.f, r.l) for r in self.regions]
+            self.region_combo.addItems(region_names)
+        else:
+            self.error('Πρόβλημα', 'Δεν βρέθηκε φύλλο χάρτη με αυτά τα φ, λ... Προσπαθήστε ξανά ή επιλέξτε κατευθείαν κάποιο από τη λίστα')
+
+    def error(self, title, text):
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(text)
+        msg.open()

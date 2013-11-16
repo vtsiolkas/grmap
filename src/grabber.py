@@ -6,11 +6,11 @@ import requests
 from entities import Point, Box
 import math
 
-# ll = Point(308000, 4380000, 2100)
-# ur = Point(309000, 4381000, 2100)
+# ll = Point(308000, 4380000, 'ΕΓΣΑ87')
+# ur = Point(309000, 4381000, 'ΕΓΣΑ87')
 
-# llt = Point(40000, 3800000, 2100)
-# urt = Point(900000, 4620000, 2100)
+# llt = Point(40000, 3800000, 'ΕΓΣΑ87')
+# urt = Point(900000, 4620000, 'ΕΓΣΑ87')
 
 def grab_img(box, w, h):
     payload = {

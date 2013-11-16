@@ -18,9 +18,19 @@ base = None
 if sys.platform == 'win32':
     base = 'Win32GUI'
 
+path_platforms = ( "C:\Python33\Lib\site-packages\PyQt5\plugins\platforms\qwindows.dll", "platforms\qwindows.dll" )
+includefiles = [path_platforms]
+excludes = [
+    '_gtkagg', '_tkagg', 'bsddb', 'curses', 'pywin.debugger',
+    'pywin.debugger.dbgcon', 'pywin.dialogs', 'tcl',
+    'Tkconstants', 'Tkinter'
+]
+
 options = {
     'build_exe': {
-        'includes': ['atexit', 'requests', 'pyproj']
+        'includes': ['atexit', 'requests', 'pyproj', 'PyQt5.QtCore','PyQt5.QtGui', 'PyQt5.QtWidgets'],
+        'include_files': [path_platforms],
+        'excludes': excludes
     }
 }
 

@@ -4,3 +4,5 @@ For build to find pyproj data:
 	In C:\Python33\Lib\site-packages\pyproj\__init__.py(after the imports):
 		pyproj_datadir = os.sep.join([os.path.abspath(os.path.dirname(__file__)+"/../../"), 'projdata'])
 	after build, copy projdata/ to build/exexxxx/ directory
+
+Also copy spinner.gif and coeff.csv to build root

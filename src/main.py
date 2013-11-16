@@ -18,6 +18,7 @@ class Map(QWidget):
         self.initial = True
         self.frozen_map = False
         self.points = []
+        self.command = 'zoom'
         self.initUI()
 
     def initUI(self):
@@ -31,8 +32,15 @@ class Map(QWidget):
         pan_btn.setCheckable(True)
         zoom_btn = QPushButton('Zoom', self)
         zoom_btn.setCheckable(True)
+        zoom_btn.setChecked(True)
+        zoom_btn.clicked.connect(lambda: self.set_command('zoom'))
+        point_btn = QPushButton('Σημείο', self)
+        point_btn.setCheckable(True)
+        point_btn.clicked.connect(lambda: self.set_command('point'))
+
         btn_group.addButton(pan_btn)
         btn_group.addButton(zoom_btn)
+        btn_group.addButton(point_btn)
 
         freeze_btn = QPushButton('Πάγωμα χάρτη', self)
         freeze_btn.setCheckable(True)
@@ -46,9 +54,13 @@ class Map(QWidget):
 
         self.grid.addWidget(pan_btn, 0, 0, 1, 1)
         self.grid.addWidget(zoom_btn, 0, 1, 1, 1)
+        self.grid.addWidget(point_btn, 0, 2, 1, 1)
         self.grid.addWidget(freeze_btn, 0, 3, 1, 1)
         self.grid.addWidget(correct_map_btn, 0, 4, 1, 1)
         self.grid.addWidget(import_points_btn, 0, 5, 1, 1)
+
+        # Drawing Toolbar ************************************
+
 
         # Views ************************************
         self.mapview = QGraphicsView(self)
@@ -66,6 +78,18 @@ class Map(QWidget):
         self.view.setMouseTracking(True)
         self.view.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
         self.grid.addWidget(self.view, 1, 0, 10, 10)
+
+        # gcanvas signal connecting here
+        self.gcanvas.grid_done.connect(self.ocanvas.update_view)
+        self.gcanvas.mouse_move.connect(self.refresh_coords)
+        self.gcanvas.point.connect(self.ocanvas.add_point)
+
+        if WMS_ENABLED:
+            self.map_canvas = MapCanvas(self)
+            self.mapview.setScene(self.map_canvas)
+            self.map_canvas.img_loading.connect(self.busy)
+            self.map_canvas.img_loaded.connect(self.ready)
+            self.gcanvas.grid_done.connect(self.map_canvas.update_view)
 
         # Footer ************************************
         self.spinner = QtGui.QMovie('spinner.gif', QtCore.QByteArray(), self)
@@ -85,14 +109,10 @@ class Map(QWidget):
         self.grid.addWidget(self.lbl, 11, 2, 1, 4)
         self.grid.addWidget(tiffbutton, 11, 6, 1, 4)
 
-        self.gcanvas.mouse_move.connect(self.refresh_coords)
-        self.gcanvas.grid_done.connect(self.ocanvas.update_view)
-        if WMS_ENABLED:
-            self.map_canvas = MapCanvas(self)
-            self.mapview.setScene(self.map_canvas)
-            self.map_canvas.img_loading.connect(self.busy)
-            self.map_canvas.img_loaded.connect(self.ready)
-            self.gcanvas.grid_done.connect(self.map_canvas.update_view)
+        read_hatt_btn = QPushButton('hatt grid', self)
+        read_hatt_btn.clicked.connect(self.ocanvas.read_hatt)
+        self.grid.addWidget(read_hatt_btn, 0, 6, 1, 1)
+
         self.show()
 
     def freeze_map(self, pressed):
@@ -105,10 +125,13 @@ class Map(QWidget):
     def correct_map(self):
         pass
 
+    def set_command(self, command):
+        self.command = command
+
     def show_import_points_dialog(self):
-        self.import_points_dialog = ImportPointsDialog(self)
-        self.import_points_dialog.show()
-        self.import_points_dialog.importing_points.connect(self.ocanvas.import_points)
+        import_points_dialog = ImportPointsDialog(self)
+        import_points_dialog.show()
+        import_points_dialog.importing_points.connect(self.ocanvas.import_points)
 
     def resizeEvent(self, event):
         self.gcanvas.clear()
@@ -151,6 +174,35 @@ class Map(QWidget):
                 str(self.map_canvas.llx),
                 str(self.map_canvas.lly + self.map_canvas.h)
             ))
+        idxf = open('sample.dxf', 'r')
+        odxf = open('ktima.dxf', 'w')
+        for line in idxf:
+            buf = line
+            if buf == '**GRMAP_EASTING**\n':
+                buf = str(self.map_canvas.llx) + '\n'
+            elif buf == '**GRMAP_NORTHING**\n':
+                buf = str(self.map_canvas.lly) + '\n'
+            elif buf == '**GRMAP_FAC**\n':
+                buf = str(self.map_canvas.wfac) + '\n'
+            elif buf == '**GRMAP_IMG_WIDTH**\n':
+                buf = str(float(self.view.size().width())) + '\n'
+            elif buf == '**GRMAP_IMG_HEIGHT**\n':
+                buf = str(float(self.view.size().height())) + '\n'
+            elif buf == '**GRMAP_IMG_WIDTH_HALF**\n':
+                buf = str(float(self.view.size().width()) - 0.5) + '\n'
+            elif buf == '**GRMAP_IMG_HEIGHT_HALF**\n':
+                buf = str(float(self.view.size().height()) - 0.5) + '\n'
+            elif buf == '**GRMAP_XREF_NAME**\n':
+                buf = 'ktima' + '\n'
+            elif buf == '**GRMAP_IMG_PATH**\n':
+                buf = 'ktima.tiff' + '\n'
+            elif buf == '**GRMAP_IMG_FAC**\n':
+                buf = '0.5' + '\n'
+            else:
+                buf = line
+            odxf.write(buf)
+        idxf.close()
+        odxf.close()
 
 
 class TiffExporterThread(QtCore.QThread):

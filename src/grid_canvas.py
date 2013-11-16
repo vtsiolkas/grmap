@@ -3,9 +3,16 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
 from entities import Point
 
+from conversions.hatt import read_coefficients, find_regions
+
+
 START_CLL = Point(0.0, 3800000.0, 0.0)
 START_WIDTH = 920000.0
 START_HEIGHT = 820000.0
+
+# START_CLL = Point(0.0, 0.0, 0.0)
+# START_WIDTH = 1000000.0
+# START_HEIGHT = 5000000.0
 
 ZOOM_FACTOR = 1.2
 
@@ -27,6 +34,7 @@ class GridCanvas(QtWidgets.QGraphicsScene):
     """
     grid_done = QtCore.pyqtSignal(dict)
     mouse_move = QtCore.pyqtSignal(str)
+    point = QtCore.pyqtSignal(float, float)
     def __init__(self, *args):
         super(GridCanvas, self).__init__(*args)
         self.llx, self.lly = START_CLL.x, START_CLL.y
@@ -78,6 +86,10 @@ class GridCanvas(QtWidgets.QGraphicsScene):
             'lly': self.lly
         }
         self.grid_done.emit(gcanvas)
+
+    def draw_hatt_grid(self):
+        regions = read_coefficients()
+
 
     def draw_grid(self):
         txt_color = QtCore.Qt.magenta
@@ -166,15 +178,19 @@ class GridCanvas(QtWidgets.QGraphicsScene):
     def mousePressEvent(self, event):
         pos = event.scenePos()
         x, y = pos.x(), pos.y()
-        if event.button() == QtCore.Qt.LeftButton:
-            # Start selecting area
-            self.selecting = True
-            self.area = AreaSelect(x, y)
-            self.serect = self.addRect(QtCore.QRectF(), SELECTION_PEN)
-        elif event.button() == QtCore.Qt.MiddleButton:
+        if event.button() == QtCore.Qt.MiddleButton:
             # Start panning
             self.panning = True
             self.pan = PanStart(x, y)
+        if event.button() == QtCore.Qt.LeftButton:
+            if self.parent().command == 'zoom':
+                # Start selecting area
+                self.selecting = True
+                self.area = AreaSelect(x, y)
+                self.serect = self.addRect(QtCore.QRectF(), SELECTION_PEN)
+            if self.parent().command == 'point':
+                ex, ey = self.trans_canvas_egsa(x, y)
+                self.point.emit(ex, ey)
 
     def mouseReleaseEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton and self.selecting:
