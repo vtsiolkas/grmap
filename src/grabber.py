@@ -3,14 +3,14 @@
 import requests
 # from PIL import Image
 # from StringIO import StringIO
-from entities import Point, Box
+from entities import MapPoint, Box
 import math
 
-# ll = Point(308000, 4380000, 'ΕΓΣΑ87')
-# ur = Point(309000, 4381000, 'ΕΓΣΑ87')
+# ll = MapPoint(308000, 4380000, 'ΕΓΣΑ87')
+# ur = MapPoint(309000, 4381000, 'ΕΓΣΑ87')
 
-# llt = Point(40000, 3800000, 'ΕΓΣΑ87')
-# urt = Point(900000, 4620000, 'ΕΓΣΑ87')
+# llt = MapPoint(40000, 3800000, 'ΕΓΣΑ87')
+# urt = MapPoint(900000, 4620000, 'ΕΓΣΑ87')
 
 def grab_img(box, w, h):
     payload = {

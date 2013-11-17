@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from PyQt5 import QtGui, QtCore, QtWidgets
-from entities import Point, Box
+from entities import MapPoint, Box
 from grabber import grab_img
 
-START_LL = Point(40000.0, 3800000.0, 0.0)
-START_UR = Point(900000.0, 4620000.0, 0.0)
+START_LL = MapPoint(40000.0, 3800000.0, 0.0)
+START_UR = MapPoint(900000.0, 4620000.0, 0.0)
 
 GRID_BOXES = (4, 3)
 
@@ -16,8 +16,8 @@ def limit_box(bllx, blly, burx, bury):
     if blly < START_LL.y: blly = START_LL.y
     if burx > START_UR.x: burx = START_UR.x
     if bury > START_UR.y: bury = START_UR.y
-    ll = Point(bllx, blly, 0)
-    ur = Point(burx, bury, 0)
+    ll = MapPoint(bllx, blly, 0)
+    ur = MapPoint(burx, bury, 0)
     return Box(ll, ur)
 
 class Grid(object):

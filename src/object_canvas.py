@@ -46,7 +46,7 @@ class ObjectCanvas(QtWidgets.QGraphicsScene):
 
     def add_point(self, x, y):
         p = Point(x, y, 0)
-        self.objects.append({'type': 'point', 'data': {'point': p}})
+        self.objects.append({'type': 'point', 'data': p})
         self.redraw_canvas()
 
     def hatt_grid(self):
@@ -55,13 +55,12 @@ class ObjectCanvas(QtWidgets.QGraphicsScene):
     def redraw_canvas(self):
         for obj in self.objects:
             if obj['type'] == 'point':
-                point = obj['data']['point']
+                point = obj['data']
                 x, y = self.trans_egsa_canvas(point.x, point.y)
                 p = PointItem(x, y)
                 self.addItem(p)
-                if 'name' in obj['data']:
-                    name = obj['data']['name']
-                    txt = self.addSimpleText(str(name))
+                if point.name:
+                    txt = self.addSimpleText(str(point.name))
                     txt.setBrush(BRUSH)
                     txt.setFont(FONT)
                     txt.setPos(x + 10, y - 10)
