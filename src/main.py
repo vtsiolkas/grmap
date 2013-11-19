@@ -8,7 +8,7 @@ from object_canvas import ObjectCanvas
 from map_canvas import MapCanvas
 from import_points import ImportPointsDialog
 
-WMS_ENABLED = False
+# WMS_ENABLED = False
 WMS_ENABLED = True
 
 
@@ -25,39 +25,6 @@ class Map(QWidget):
         self.setWindowTitle('GrMap')
         self.setGeometry(10, 30, 800, 700)
         self.grid = QGridLayout(self)
-
-        # Toolbar ************************************
-        btn_group = QButtonGroup(self)
-        pan_btn = QPushButton('Pan', self)
-        pan_btn.setCheckable(True)
-        zoom_btn = QPushButton('Zoom', self)
-        zoom_btn.setCheckable(True)
-        zoom_btn.setChecked(True)
-        zoom_btn.clicked.connect(lambda: self.set_command('zoom'))
-        point_btn = QPushButton('Σημείο', self)
-        point_btn.setCheckable(True)
-        point_btn.clicked.connect(lambda: self.set_command('point'))
-
-        btn_group.addButton(pan_btn)
-        btn_group.addButton(zoom_btn)
-        btn_group.addButton(point_btn)
-
-        freeze_btn = QPushButton('Πάγωμα χάρτη', self)
-        freeze_btn.setCheckable(True)
-        freeze_btn.clicked.connect(self.freeze_map)
-
-        correct_map_btn = QPushButton('Διόρθωση χάρτη', self)
-        correct_map_btn.clicked.connect(self.correct_map)
-
-        import_points_btn = QPushButton('Εισαγωγή σημείων', self)
-        import_points_btn.clicked.connect(self.show_import_points_dialog)
-
-        self.grid.addWidget(pan_btn, 0, 0, 1, 1)
-        self.grid.addWidget(zoom_btn, 0, 1, 1, 1)
-        self.grid.addWidget(point_btn, 0, 2, 1, 1)
-        self.grid.addWidget(freeze_btn, 0, 3, 1, 1)
-        self.grid.addWidget(correct_map_btn, 0, 4, 1, 1)
-        self.grid.addWidget(import_points_btn, 0, 5, 1, 1)
 
         # Views ************************************
         self.mapview = QGraphicsView(self)
@@ -88,6 +55,44 @@ class Map(QWidget):
             self.map_canvas.img_loaded.connect(self.ready)
             self.gcanvas.grid_done.connect(self.map_canvas.update_view)
 
+        # Toolbar ************************************
+        btn_group = QButtonGroup(self)
+        pan_btn = QPushButton('Pan', self)
+        pan_btn.setCheckable(True)
+        zoom_btn = QPushButton('Zoom', self)
+        zoom_btn.setCheckable(True)
+        zoom_btn.setChecked(True)
+        zoom_btn.clicked.connect(lambda: self.set_command('zoom'))
+        point_btn = QPushButton('Σημείο', self)
+        point_btn.setCheckable(True)
+        point_btn.clicked.connect(lambda: self.set_command('point'))
+
+        btn_group.addButton(pan_btn)
+        btn_group.addButton(zoom_btn)
+        btn_group.addButton(point_btn)
+
+        freeze_btn = QPushButton('Πάγωμα χάρτη', self)
+        freeze_btn.setCheckable(True)
+        freeze_btn.clicked.connect(self.freeze_map)
+
+        correct_map_btn = QPushButton('Διόρθωση χάρτη', self)
+        correct_map_btn.clicked.connect(self.correct_map)
+
+        import_points_btn = QPushButton('Εισαγωγή σημείων', self)
+        import_points_btn.clicked.connect(self.show_import_points_dialog)
+
+        hatt_grid_btn = QPushButton('Διανομή Κ.Φ.Χ 1:50000', self)
+        hatt_grid_btn.setCheckable(True)
+        hatt_grid_btn.clicked.connect(self.ocanvas.hatt_grid)
+
+        self.grid.addWidget(pan_btn, 0, 0, 1, 1)
+        self.grid.addWidget(zoom_btn, 0, 1, 1, 1)
+        self.grid.addWidget(point_btn, 0, 2, 1, 1)
+        self.grid.addWidget(freeze_btn, 0, 3, 1, 1)
+        self.grid.addWidget(correct_map_btn, 0, 4, 1, 1)
+        self.grid.addWidget(import_points_btn, 0, 5, 1, 1)
+        self.grid.addWidget(hatt_grid_btn, 0, 6, 1, 1)
+
         # Footer ************************************
         self.spinner = QtGui.QMovie('spinner.gif', QtCore.QByteArray(), self)
         self.spinner.setCacheMode(QtGui.QMovie.CacheAll)
@@ -105,10 +110,6 @@ class Map(QWidget):
         self.grid.addWidget(self.spinlbl, 11, 0, 1, 2)
         self.grid.addWidget(self.lbl, 11, 2, 1, 4)
         self.grid.addWidget(tiffbutton, 11, 6, 1, 4)
-
-        hatt_grid_btn = QPushButton('Διανομή Κ.Φ.Χ 1:50000', self)
-        hatt_grid_btn.clicked.connect(self.ocanvas.hatt_grid)
-        self.grid.addWidget(hatt_grid_btn, 0, 6, 1, 1)
 
         self.show()
 

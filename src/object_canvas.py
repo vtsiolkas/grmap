@@ -3,6 +3,7 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
 from canvas_entities import PointItem
 from entities import Point
+from conversions.hatt import REGIONS
 
 PEN = QtGui.QPen()
 BRUSH = QtCore.Qt.red
@@ -36,7 +37,6 @@ class ObjectCanvas(QtWidgets.QGraphicsScene):
         self.llx, self.lly = gcanvas['llx'], gcanvas['lly']
         self.w, self.h = gcanvas['w'], gcanvas['h']
         self.wfac, self.hfac = gcanvas['wfac'], gcanvas['hfac']
-        self.clear()
         self.redraw_canvas()
 
     def import_points(self, points):
@@ -49,10 +49,27 @@ class ObjectCanvas(QtWidgets.QGraphicsScene):
         self.objects.append({'type': 'point', 'data': p})
         self.redraw_canvas()
 
-    def hatt_grid(self):
-        pass
+    def hatt_grid(self, pressed):
+        if pressed:
+            for region in REGIONS:
+                rect = {
+                    'name': region.name,
+                    'llx': region.llx,
+                    'lly': region.lly,
+                    'ulx': region.ulx,
+                    'uly': region.uly,
+                    'urx': region.urx,
+                    'ury': region.ury,
+                    'lrx': region.lrx,
+                    'lry': region.lry,
+                }
+                self.objects.append({'type': 'hatt_grid', 'data': rect})
+        else:
+            self.objects[:] = [obj for obj in self.objects if obj['type'] != 'hatt_grid']
+        self.redraw_canvas()
 
     def redraw_canvas(self):
+        self.clear()
         for obj in self.objects:
             if obj['type'] == 'point':
                 point = obj['data']
@@ -64,11 +81,12 @@ class ObjectCanvas(QtWidgets.QGraphicsScene):
                     txt.setBrush(BRUSH)
                     txt.setFont(FONT)
                     txt.setPos(x + 10, y - 10)
-            if obj['type'] == 'grid_rect':
-                llx, lly = self.trans_egsa_canvas(obj['rect']['llx'], obj['rect']['lly'])
-                lrx, lry = self.trans_egsa_canvas(obj['rect']['lrx'], obj['rect']['lry'])
-                urx, ury = self.trans_egsa_canvas(obj['rect']['urx'], obj['rect']['ury'])
-                ulx, uly = self.trans_egsa_canvas(obj['rect']['ulx'], obj['rect']['uly'])
+            if obj['type'] == 'hatt_grid':
+                rect = obj['data']
+                llx, lly = self.trans_egsa_canvas(rect['llx'], rect['lly'])
+                lrx, lry = self.trans_egsa_canvas(rect['lrx'], rect['lry'])
+                urx, ury = self.trans_egsa_canvas(rect['urx'], rect['ury'])
+                ulx, uly = self.trans_egsa_canvas(rect['ulx'], rect['uly'])
                 # Don't draw invisibles, TODO, this hides some on the edges too
                 # if all([i < 0 for i in [llx, lly, lrx, lry, ulx, uly, urx, ury]]):
                 #     break
@@ -76,9 +94,19 @@ class ObjectCanvas(QtWidgets.QGraphicsScene):
                 lr = QtCore.QPointF(lrx, lry)
                 ur = QtCore.QPointF(urx, ury)
                 ul = QtCore.QPointF(ulx, uly)
-                rect = QtGui.QPolygonF()
-                rect.append(ul)
-                rect.append(ur)
-                rect.append(lr)
-                rect.append(ll)
-                qpoly = self.addPolygon(rect, PEN)
+                qpoly = QtGui.QPolygonF()
+                qpoly.append(ul)
+                qpoly.append(ur)
+                qpoly.append(lr)
+                qpoly.append(ll)
+                self.addPolygon(qpoly, PEN)
+                txt = self.addSimpleText(rect['name'])
+                txt.setBrush(BRUSH)
+                txt.setFont(FONT)
+                txtrect = txt.boundingRect()
+                w = txtrect.size().width() / 2
+                h = txtrect.size().height() / 2
+                x = (lrx + llx) / 2 - w
+                y = (uly + lly) / 2 - h
+                txt.setPos(x, y)
+                print(x,y)
