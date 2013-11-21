@@ -7,14 +7,14 @@ from conversions.hatt import REGIONS
 from conversions.conversions import *
 
 
-LINETYPE = {0: {'display': 'Όνομα,Χ(φ),Υ(λ),Ζ',
-                'form': 'name,x,y,z'},
-            1: {'display': 'Όνομα,Χ(φ),Υ(λ)',
-                'form': 'name,x,y'},
-            2: {'display': 'Χ(φ),Υ(λ),Ζ',
+LINETYPE = {0: {'display': 'Χ(φ),Υ(λ)',
+                'form': 'x,y'},
+            1: {'display': 'Χ(φ),Υ(λ),Ζ',
                 'form': 'x,y,z'},
-            3: {'display': 'Χ(φ),Υ(λ)',
-                'form': 'x,y'}}
+            2: {'display': 'Όνομα,Χ(φ),Υ(λ)',
+                'form': 'name,x,y'},
+            3: {'display': 'Όνομα,Χ(φ),Υ(λ),Ζ',
+                'form': 'name,x,y,z'}}
 
 
 class ImportPointsDialog(QDialog):
@@ -48,10 +48,10 @@ class ImportPointsDialog(QDialog):
         from_linetype_label = QLabel('Μορφή:')
         self.from_linetype_combo = QComboBox(self)
         self.from_linetype_combo.addItems([
-            'Όνομα,Χ(φ),Υ(λ),Ζ',
-            'Όνομα,Χ(φ),Υ(λ)',
-            'Χ(φ),Υ(λ),Ζ',
             'Χ(φ),Υ(λ)',
+            'Χ(φ),Υ(λ),Ζ',
+            'Όνομα,Χ(φ),Υ(λ),Ζ',
+            'Όνομα,Χ(φ),Υ(λ)',            
             'Άλλη(γράψτε εδώ)'])
         self.from_linetype_combo.setEditable(True)
         self.from_linetype_combo.editTextChanged.connect(self.keep_from_linetype_combo)
@@ -90,7 +90,7 @@ class ImportPointsDialog(QDialog):
         grid.addWidget(self.text_output, 9, 0, 4, 6)
 
     def load_file(self):
-        file_chooser = QFileDialog.getOpenFileName(self, 'Επιλογή αρχείου', '', "Όλα τα αρχεία (*.*)")
+        file_chooser = QFileDialog.getOpenFileName(self, 'Επιλογή αρχείου', QtCore.QDir.homePath(), "Όλα τα αρχεία (*.*)")
         filename = file_chooser[0]
         try:
             with open(filename,'r') as f:
@@ -188,6 +188,10 @@ class ImportPointsDialog(QDialog):
                     self.error('Πρόβλημα', 'Το σημείο δεν αντιστοιχεί σε κάποιο φύλλο χάρτη 1:50000')
         elif source_system == 'WGS84':
             for p in self.points:
+                # Changing f and l arounf
+                y = p.x
+                p.x = p.y
+                p.y = y
                 p.wgs_egsa()
         elif source_system == "TM3 Δυτική Ζώνη":
             for p in self.points:
@@ -216,14 +220,15 @@ class ImportPointsDialog(QDialog):
         if source_system == 'ΕΓΣΑ87':
             self.text_output.setText(self.text_input.toPlainText())
         else:
-            line = ''
-            if p.name:
-                line += p.name + self.div
-            line += str(p.x) + self.div
-            line += str(p.y)
-            if p.z:
-                line += self.div + str(p.z)
-            self.text_output.append(line)
+            linetype = LINETYPE[self.from_linetype_combo.currentIndex()]['form'].split(',')            
+            for p in self.points:
+                line = ''
+                if p.name:
+                    line += p.name + self.div
+                line += '%.3f%s%.3f' % (p.x, self.div, p.y)
+                if 'z' in linetype:
+                    line += '%s%.3f' % (self.div, p.z)
+                self.text_output.append(line)
 
     def import_to_canvas(self):
         self.convert()
@@ -245,8 +250,8 @@ class HattDialog(QDialog):
         grid = QGridLayout(self)
 
         explain_label = QLabel(
-            'Εισάγετε το φ και λ του κέντρου φύλλου χάρτη. Η εφαρμογή ανιχνεύει αυτόματα \n' +
-            'τα πάντα \n')
+            'Εισάγετε το φ και λ του κέντρου φύλλου χάρτη HATT. Η εφαρμογή ανιχνεύει αυτόματα \n' +
+            'τα υπόλοιπα \n')
 
         f_label = QLabel('φ:')
         l_label = QLabel('λ:')

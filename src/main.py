@@ -8,7 +8,7 @@ from object_canvas import ObjectCanvas
 from map_canvas import MapCanvas
 from import_points import ImportPointsDialog
 
-# WMS_ENABLED = False
+WMS_ENABLED = False
 WMS_ENABLED = True
 
 
@@ -104,7 +104,7 @@ class Map(QWidget):
         self.lbl = QLabel(self)
         self.lbl.setText('0.000, 0.000')
 
-        tiffbutton = QPushButton('Export tiff+tfw', self)
+        tiffbutton = QPushButton('Αποθήκευση dxf', self)
         tiffbutton.clicked.connect(self.export_tiff)
 
         self.grid.addWidget(self.spinlbl, 11, 0, 1, 2)
@@ -162,8 +162,12 @@ class Map(QWidget):
             print('Coordinates copied to clipboard: ', coords)
 
     def export_tiff(self):
-        self.map_canvas.pixmap['pixmap'].save('ktima.tiff')
-        with open('ktima.tfw','w') as f:
+        file_chooser = QFileDialog.getSaveFileName(self, "Αποθήκευση dxf",
+                            QtCore.QDir.homePath(),
+                            "Αρχεία dxf (*.dxf)")
+        filename = '.'.join(file_chooser[0].split('.')[:-1])
+        self.map_canvas.pixmap['pixmap'].save(filename + '.tiff')
+        with open(filename + '.tfw','w') as f:
             f.write('%s\n%s\n%s\n%s\n%s\n%s' % (
                 str(self.map_canvas.wfac),
                 '0',
@@ -173,13 +177,21 @@ class Map(QWidget):
                 str(self.map_canvas.lly + self.map_canvas.h)
             ))
         idxf = open('sample.dxf', 'r')
-        odxf = open('ktima.dxf', 'w')
+        odxf = open(filename + '.dxf', 'w')
         for line in idxf:
             buf = line
-            if buf == '**GRMAP_EASTING**\n':
+            if buf == '**GRMAP_EASTING**\n' or buf == '**EXT_LLX**\n':
                 buf = str(self.map_canvas.llx) + '\n'
-            elif buf == '**GRMAP_NORTHING**\n':
+            elif buf == '**GRMAP_NORTHING**\n' or buf == '**EXT_LLY**\n':
                 buf = str(self.map_canvas.lly) + '\n'
+            elif buf == '**EXT_URX**\n':
+                buf = str(self.map_canvas.llx + self.map_canvas.w) + '\n'
+            elif buf == '**EXT_URY**\n':
+                buf = str(self.map_canvas.lly + self.map_canvas.h) + '\n'
+            elif buf == '**VIEW_CENTERX**\n':
+                buf = str(self.map_canvas.llx + self.map_canvas.w / 2) + '\n'
+            elif buf == '**VIEW_CENTERY**\n':
+                buf = str(self.map_canvas.lly + self.map_canvas.h / 2) + '\n'
             elif buf == '**GRMAP_FAC**\n':
                 buf = str(self.map_canvas.wfac) + '\n'
             elif buf == '**GRMAP_IMG_WIDTH**\n':
@@ -191,9 +203,9 @@ class Map(QWidget):
             elif buf == '**GRMAP_IMG_HEIGHT_HALF**\n':
                 buf = str(float(self.view.size().height()) - 0.5) + '\n'
             elif buf == '**GRMAP_XREF_NAME**\n':
-                buf = 'ktima' + '\n'
+                buf = filename + '\n'
             elif buf == '**GRMAP_IMG_PATH**\n':
-                buf = 'ktima.tiff' + '\n'
+                buf = filename + '.tiff' + '\n'
             elif buf == '**GRMAP_IMG_FAC**\n':
                 buf = '0.5' + '\n'
             else:

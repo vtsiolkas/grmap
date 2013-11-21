@@ -8,7 +8,6 @@ from conversions.hatt import REGIONS
 PEN = QtGui.QPen()
 BRUSH = QtCore.Qt.red
 PEN.setBrush(BRUSH);
-FONT = QtGui.QFont("SansSerif", 12)
 
 class ObjectCanvas(QtWidgets.QGraphicsScene):
     """Widget for displaying map
@@ -52,24 +51,19 @@ class ObjectCanvas(QtWidgets.QGraphicsScene):
     def hatt_grid(self, pressed):
         if pressed:
             for region in REGIONS:
-                rect = {
-                    'name': region.name,
-                    'llx': region.llx,
-                    'lly': region.lly,
-                    'ulx': region.ulx,
-                    'uly': region.uly,
-                    'urx': region.urx,
-                    'ury': region.ury,
-                    'lrx': region.lrx,
-                    'lry': region.lry,
-                }
-                self.objects.append({'type': 'hatt_grid', 'data': rect})
+                self.objects.append({'type': 'hatt_grid', 'data': region})
         else:
             self.objects[:] = [obj for obj in self.objects if obj['type'] != 'hatt_grid']
         self.redraw_canvas()
 
     def redraw_canvas(self):
         self.clear()
+        # Calculate font size
+        fac = (self.wfac + self.hfac) / 2
+        font_size = 1200 / fac
+        if font_size < 1: font_size = 1
+        # print(font_size)
+        FONT = QtGui.QFont("SansSerif", font_size)
         for obj in self.objects:
             if obj['type'] == 'point':
                 point = obj['data']
@@ -83,30 +77,29 @@ class ObjectCanvas(QtWidgets.QGraphicsScene):
                     txt.setPos(x + 10, y - 10)
             if obj['type'] == 'hatt_grid':
                 rect = obj['data']
-                llx, lly = self.trans_egsa_canvas(rect['llx'], rect['lly'])
-                lrx, lry = self.trans_egsa_canvas(rect['lrx'], rect['lry'])
-                urx, ury = self.trans_egsa_canvas(rect['urx'], rect['ury'])
-                ulx, uly = self.trans_egsa_canvas(rect['ulx'], rect['uly'])
-                # Don't draw invisibles, TODO, this hides some on the edges too
-                # if all([i < 0 for i in [llx, lly, lrx, lry, ulx, uly, urx, ury]]):
-                #     break
-                ll = QtCore.QPointF(llx, lly)
-                lr = QtCore.QPointF(lrx, lry)
-                ur = QtCore.QPointF(urx, ury)
-                ul = QtCore.QPointF(ulx, uly)
-                qpoly = QtGui.QPolygonF()
-                qpoly.append(ul)
-                qpoly.append(ur)
-                qpoly.append(lr)
-                qpoly.append(ll)
-                self.addPolygon(qpoly, PEN)
-                txt = self.addSimpleText(rect['name'])
-                txt.setBrush(BRUSH)
-                txt.setFont(FONT)
-                txtrect = txt.boundingRect()
-                w = txtrect.size().width() / 2
-                h = txtrect.size().height() / 2
-                x = (lrx + llx) / 2 - w
-                y = (uly + lly) / 2 - h
-                txt.setPos(x, y)
-                print(x,y)
+                llx, lly = self.trans_egsa_canvas(rect.llx, rect.lly)
+                lrx, lry = self.trans_egsa_canvas(rect.lrx, rect.lry)
+                urx, ury = self.trans_egsa_canvas(rect.urx, rect.ury)
+                ulx, uly = self.trans_egsa_canvas(rect.ulx, rect.uly)
+                # Don't draw invisibles, TODO, this hides some rects on the edges too
+                if not all([i < 0 for i in [llx, lly, lrx, lry, ulx, uly, urx, ury]]):
+                    ll = QtCore.QPointF(llx, lly)
+                    lr = QtCore.QPointF(lrx, lry)
+                    ur = QtCore.QPointF(urx, ury)
+                    ul = QtCore.QPointF(ulx, uly)
+                    qpoly = QtGui.QPolygonF()
+                    qpoly.append(ul)
+                    qpoly.append(ur)
+                    qpoly.append(lr)
+                    qpoly.append(ll)
+                    self.addPolygon(qpoly, PEN)
+                    txt = self.addSimpleText(rect.name)
+                    txt.setBrush(BRUSH)
+                    txt.setFont(FONT)
+                    txtrect = txt.boundingRect()
+                    w = txtrect.size().width() / 2
+                    h = txtrect.size().height() / 2
+                    x = (lrx + llx) / 2 - w
+                    y = (uly + lly) / 2 - h
+                    txt.setPos(x, y)
+                # print(x,y)

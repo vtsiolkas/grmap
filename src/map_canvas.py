@@ -7,7 +7,7 @@ from grabber import grab_img
 START_LL = MapPoint(40000.0, 3800000.0, 0.0)
 START_UR = MapPoint(900000.0, 4620000.0, 0.0)
 
-GRID_BOXES = (4, 3)
+GRID_BOXES = (5, 4)
 
 
 def limit_box(bllx, blly, burx, bury):
